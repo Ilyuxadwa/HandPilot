@@ -6,8 +6,18 @@ import main
 import utils
 
 def main_ui(app):
+    def toggle_text(txt):
+        return ft.Text(txt, style = tools.primary_text_style(app, 32))
+    
     icon, msg = utils.welcome_message()
-    app.add_element(app.alignment("rcenter", ft.Icon(icon, color = app.theme.primary, size = tools.adapt_dimensions(app, "w", 5)), ft.Text(msg, style = tools.primary_text_style(app, 48)), width = tools.adapt_dimensions(app, "w", 100)))
+    app.add_element(app.alignment("rcenter", ft.Icon(icon, color = app.theme.primary, size = tools.adapt_dimensions(app, "w", 7)), ft.Text(msg, style = tools.primary_text_style(app, 48, weight = ft.FontWeight.BOLD)), width = tools.adapt_dimensions(app, "w", 100)))
+
+    voice_toggle = tools.switch(app, 18, on_change = lambda: main.toggle_voice_helper(voice_toggle.value))
+    gestures_toggle = tools.switch(app, 18, on_change = lambda: main.toggle_voice_helper(gestures_toggle.value))
+
+    app.add_element(app.alignment("rspace_evenly", 
+                        app.alignment("rcenter", toggle_text("Voice Helper"), voice_toggle),
+                        app.alignment("rcenter", toggle_text("Gestures Control"), gestures_toggle)))
 
 def build():
     app = App()
