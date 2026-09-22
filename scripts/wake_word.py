@@ -5,7 +5,6 @@ from typing import Callable, Optional
 
 import numpy as np
 import sounddevice as sd
-import openwakeword
 from openwakeword.model import Model
 
 SAMPLE_RATE = 16000
@@ -13,7 +12,7 @@ FRAME_SAMPLES = 1280
 DETECTION_THRESHOLD = 0.5
 COOLDOWN_SECONDS = 1.5
 
-WAKEWORD_MODEL_PATHS: list[str] = ["assets/models/handy.onnx"]
+WAKEWORD_MODEL_PATHS = ["assets/models/wakeword/handy.onnx"]
 
 
 class WakeWordListener:
@@ -21,7 +20,7 @@ class WakeWordListener:
     def __init__(
         self,
         on_detected: Callable[[str, float], None],
-        model_paths: Optional[list[str]] = None,
+        model_paths: Optional[list[str]] = WAKEWORD_MODEL_PATHS,
         threshold: float = DETECTION_THRESHOLD,
         cooldown: float = COOLDOWN_SECONDS,
     ):
@@ -38,8 +37,6 @@ class WakeWordListener:
             except TypeError:
                 self.model = Model(wakeword_model_paths=model_paths or [])
 
-        print(f"Loaded models: {list(self.model.models.keys())}")
-
         self.audio_q: "queue.Queue[np.ndarray]" = queue.Queue()
         self.running = False
 
@@ -51,7 +48,6 @@ class WakeWordListener:
 
 
     def listen(self):
-        """Blocking call -- runs until KeyboardInterrupt or self.stop()."""
         self.running = True
         with sd.InputStream(
             samplerate=SAMPLE_RATE,
@@ -76,18 +72,3 @@ class WakeWordListener:
 
     def stop(self):
         self.running = False
-
-def handle_wake(name: str, score: float):
-    print(f"Wake word detected: '{name}' (confidence {score:.2f})")
-
-
-if __name__ == "__main__":
-    listener = WakeWordListener(
-        on_detected=handle_wake,
-        model_paths=WAKEWORD_MODEL_PATHS,
-        threshold=DETECTION_THRESHOLD,
-    )
-    try:
-        listener.listen()
-    except KeyboardInterrupt:
-        print("\nListening stopped.")
