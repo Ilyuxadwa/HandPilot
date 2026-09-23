@@ -42,8 +42,8 @@ class VoiceCommandController:
         text = self.listener.listen_for_command()
         if text:
             self.function(text.split())
-        elif self.logger:
-            self.logger.info("Heard nothing")
+        else:
+            self.logger.info("Nothing heard...")
 
 
 class CommandController:
