@@ -55,17 +55,24 @@ class CommandController:
         return list(self.commands.keys())
 
     def execute(self, parts):
-        text = " ".join(parts)
-        best = process.extractOne(text, self.command_names(), scorer=fuzz.WRatio)
-        if not best:
-            if self.logger:
-                self.logger.warning("No commands registered")
+        if not parts:
             return
-        name, score, _ = best
-        if score < 70:
+        best_name, best_score, arg_start = None, 0, 0
+        for name in self.commands:
+            word_count = len(name.split())
+            if word_count > len(parts):
+                continue
+            candidate = " ".join(parts[:word_count])
+            score = fuzz.WRatio(candidate, name)
+            if score > best_score:
+                best_name, best_score, arg_start = name, score, word_count
+
+        if not best_name or best_score < 70:
             if self.logger:
-                self.logger.info(f"No confident match for '{text}' (best={name!r} score={score:.0f})")
+                self.logger.info(f"No confident match for '{' '.join(parts)}'")
             return
+
+        args = parts[arg_start:]
         if self.logger:
-            self.logger.info(f"Executing: {name} (score={score:.0f})")
-        self.commands[name]()
+            self.logger.info(f"Executing: {best_name} (score={best_score:.0f}) args={args}")
+        self.commands[best_name](args)
