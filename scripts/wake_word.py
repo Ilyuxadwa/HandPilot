@@ -40,7 +40,7 @@ class WakeWordListener:
         self.audio_q: "queue.Queue[np.ndarray]" = queue.Queue()
         self.running = False
 
-    def _audio_callback(self, indata, frames, time_info, status):
+    def audio_callback(self, indata, frames, time_info, status):
         if status:
             print(f"Mic status: {status}")
         pcm16 = (indata[:, 0] * 32767).astype(np.int16)
@@ -54,7 +54,7 @@ class WakeWordListener:
             channels=1,
             dtype="float32",
             blocksize=FRAME_SAMPLES,
-            callback=self._audio_callback,
+            callback=self.audio_callback,
         ):
             while self.running:
                 chunk = self.audio_q.get()

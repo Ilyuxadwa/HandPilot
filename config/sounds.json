@@ -1,0 +1,15 @@
+{
+    "greetings": [
+        "greeting_1"
+    ],
+
+    "done": [
+        "done",
+        "sure"
+    ],
+
+    "unknown": [
+        "unrecognised",
+        "not_understand"
+    ]
+}

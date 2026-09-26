@@ -21,3 +21,11 @@ def icon(name: str):
 def welcome_message():
     msg = random.choice(list(welcome_messages))
     return icon("welcome-"+welcome_messages.get(msg)), msg
+
+def choose_sound(name: str):
+    with open("config/sounds.json", "r", encoding="utf-8") as f:
+        sound_map = json.load(f)
+    sound_list = sound_map.get(name)
+    if not sound_list:
+        raise KeyError(f"No sounds mapped for '{name}'")
+    return random.choice(sound_list)

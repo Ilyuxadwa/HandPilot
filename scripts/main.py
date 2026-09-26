@@ -1,5 +1,8 @@
 from unified_ui.logger import Logger
 from unified_ui.audio import AudioController
+from time import sleep
+
+import utils
 from controllers import WakeWordController, VoiceCommandController, CommandController
 
 
@@ -15,9 +18,24 @@ def on_wake_word_detected(name, score):
     voice_controller.start()
 
 def voice_command(parts):
-    commands_controller.execute(parts)
-    voice_controller.stop()
-    wake_controller.start()
+    if parts == -1:
+        audio_controller.play("wrong")
+        wake_controller.start()
+    else:
+        execution = commands_controller.execute(parts)
+        if execution == 1:
+            audio_controller.play("ok")
+            sleep(1)
+            audio_controller.play(utils.choose_sound("done"))
+        elif execution == 0:
+            audio_controller.play("wrong")
+            sleep(1)
+            audio_controller.play(utils.choose_sound("unknown"))
+        else:
+            audio_controller.play("wrong")
+        wake_controller.start()
+
+
 
 wake_controller = WakeWordController(logger, on_wake_word_detected)
 voice_controller = VoiceCommandController(logger, voice_command)
@@ -32,6 +50,12 @@ async def start(app):
     audio_controller.add_sound("ok", "misc/ok.mp3")
     audio_controller.add_sound("wrong", "misc/wrong.mp3")
     audio_controller.add_sound("waiting", "misc/waiting.mp3")
+
+    audio_controller.add_sound("done", "english/done.mp3")
+    audio_controller.add_sound("sure", "english/sure.mp3")
+    audio_controller.add_sound("greeting_1", "english/greeting_1.mp3")
+    audio_controller.add_sound("unrecognised", "english/unrecognised_command.mp3")
+    audio_controller.add_sound("not_understand", "english/not_understand.mp3")
 
 
 def toggle_voice_helper(state):

@@ -56,7 +56,7 @@ class CommandController:
 
     def execute(self, parts):
         if not parts:
-            return
+            return -1
         best_name, best_score, arg_start = None, 0, 0
         for name in self.commands:
             word_count = len(name.split())
@@ -70,9 +70,10 @@ class CommandController:
         if not best_name or best_score < 70:
             if self.logger:
                 self.logger.info(f"No confident match for '{' '.join(parts)}'")
-            return
+            return 0
 
         args = parts[arg_start:]
         if self.logger:
             self.logger.info(f"Executing: {best_name} (score={best_score:.0f}) args={args}")
         self.commands[best_name](args)
+        return 1
