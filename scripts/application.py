@@ -13,7 +13,7 @@ def main_ui(app):
     app.add_element(app.alignment("rcenter", ft.Icon(icon, color = app.theme.primary, size = tools.adapt_dimensions(app, "w", 7)), ft.Text(msg, style = tools.primary_text_style(app, 48, weight = ft.FontWeight.BOLD)), width = tools.adapt_dimensions(app, "w", 100)))
 
     voice_toggle = tools.switch(app, 18, on_change = lambda: main.toggle_voice_helper(voice_toggle.value))
-    gestures_toggle = tools.switch(app, 18, on_change = lambda: main.toggle_voice_helper(gestures_toggle.value))
+    gestures_toggle = tools.switch(app, 18, on_change = lambda: main.toggle_gestures_controls(gestures_toggle.value))
 
     app.add_element(app.alignment("rspace_evenly", 
                         app.alignment("rcenter", toggle_text("Voice Helper"), voice_toggle),
