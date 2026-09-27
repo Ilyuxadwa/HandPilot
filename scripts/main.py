@@ -57,9 +57,33 @@ async def start(app):
     audio_controller.add_sound("wrong", "misc/wrong.mp3")
     audio_controller.add_sound("waiting", "misc/waiting.mp3")
 
+    audio_controller.add_sound("hey_help", "english/hey_help.mp3")
+    audio_controller.add_sound("greetings", "english/greetings.mp3")
+    audio_controller.add_sound("nice_to_meet", "english/nice_to_meet.mp3")
+
+    audio_controller.add_sound("see_you", "english/see_you.mp3")
+    audio_controller.add_sound("goodbye", "english/goodbye.mp3")
+    audio_controller.add_sound("bye_now", "english/bye_now.mp3")
+
+    audio_controller.add_sound("helper", "english/helper.mp3")
+    audio_controller.add_sound("assistant", "english/assistant.mp3")
+    audio_controller.add_sound("handy", "english/handy.mp3")
+
+    audio_controller.add_sound("youre_welcome", "english/youre_welcome.mp3")
+    audio_controller.add_sound("no_problem", "english/no_problem.mp3")
+    audio_controller.add_sound("thats_my_job", "english/thats_my_job.mp3")
+
+    audio_controller.add_sound("you_may_ask", "english/you_may_ask.mp3")
+    audio_controller.add_sound("i_can_help", "english/i_can_help.mp3")
+
+    audio_controller.add_sound("awesome", "english/awesome.mp3")
+    audio_controller.add_sound("fine", "english/fine.mp3")
+    audio_controller.add_sound("best", "english/best.mp3")
+    
     audio_controller.add_sound("done", "english/done.mp3")
     audio_controller.add_sound("sure", "english/sure.mp3")
-    audio_controller.add_sound("greeting_1", "english/greeting_1.mp3")
+    audio_controller.add_sound("your_wish", "english/your_wish.mp3")
+
     audio_controller.add_sound("unrecognised", "english/unrecognised_command.mp3")
     audio_controller.add_sound("not_understand", "english/not_understand.mp3")
 

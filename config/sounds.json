@@ -1,6 +1,8 @@
 {
     "greetings": [
-        "greeting_1"
+        "hey_help",
+        "greetings",
+        "nice_to_meet"
     ],
 
     "farewell": [
@@ -36,7 +38,8 @@
     
     "done": [
         "done",
-        "sure"
+        "sure",
+        "your_wish"
     ],
 
     "unknown": [
