@@ -3,6 +3,37 @@
         "greeting_1"
     ],
 
+    "farewell": [
+        "see_you",
+        "goodbye",
+        "bye_now"
+    ],
+
+    "identity": [
+        "helper",
+        "assistant",
+        "handy"
+    ],
+
+    "thanks": [
+        "youre_welcome",
+        "no_problem",
+        "thats_my_job"
+    ],
+
+    "capabilities": [
+        "you_may_ask",
+        "i_can_help"
+    ],
+
+    "how_are_you": [
+        "awesome",
+        "fine",
+        "best"
+    ],
+
+
+    
     "done": [
         "done",
         "sure"

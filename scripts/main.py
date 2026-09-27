@@ -31,8 +31,10 @@ def voice_command(parts):
             audio_controller.play("wrong")
             sleep(1)
             audio_controller.play(utils.choose_sound("unknown"))
-        else:
+        elif execution == -1:
             audio_controller.play("wrong")
+        else:
+            audio_controller.play(utils.choose_sound(execution))
         wake_controller.start()
 
 
