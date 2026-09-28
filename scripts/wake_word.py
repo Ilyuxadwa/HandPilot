@@ -11,6 +11,8 @@ SAMPLE_RATE = 16000
 FRAME_SAMPLES = 1280
 DETECTION_THRESHOLD = 0.5
 COOLDOWN_SECONDS = 1.5
+GRACE_SECONDS = 1.0
+FLUSH_SECONDS = 2.0
 
 WAKEWORD_MODEL_PATHS = ["assets/models/wakeword/handy.onnx"]
 
@@ -28,6 +30,7 @@ class WakeWordListener:
         self.threshold = threshold
         self.cooldown = cooldown
         self.last_trigger_time = 0.0
+        self.started_at = 0.0
 
         try:
             self.model = Model(wakeword_models=model_paths or [], inference_framework="onnx")
@@ -47,8 +50,22 @@ class WakeWordListener:
         self.audio_q.put(pcm16)
 
 
+    def flush(self):
+        self.model.reset()
+        silence = np.zeros(FRAME_SAMPLES, dtype=np.int16)
+        for i in range(int(FLUSH_SECONDS * SAMPLE_RATE / FRAME_SAMPLES)):
+            self.model.predict(silence)
+        self.model.reset()
+
+        while True:
+            try:
+                self.audio_q.get_nowait()
+            except queue.Empty:
+                break
+
     def listen(self):
         self.running = True
+        self.flush()
         with sd.InputStream(
             samplerate=SAMPLE_RATE,
             channels=1,
@@ -56,11 +73,17 @@ class WakeWordListener:
             blocksize=FRAME_SAMPLES,
             callback=self.audio_callback,
         ):
+            self.started_at = time.time()
             while self.running:
-                chunk = self.audio_q.get()
+                try:
+                    chunk = self.audio_q.get(timeout=0.5)
+                except queue.Empty:
+                    continue
                 predictions = self.model.predict(chunk)
 
                 now = time.time()
+                if now - self.started_at < GRACE_SECONDS:
+                    continue
                 if now - self.last_trigger_time < self.cooldown:
                     continue
 

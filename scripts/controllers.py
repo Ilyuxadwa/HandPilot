@@ -18,8 +18,11 @@ class WakeWordController:
 
     def start(self):
         if self.thread and self.thread.is_alive():
-            return
-        self.listener._running = True
+            if self.listener.running:
+                return
+            if self.thread is not threading.current_thread():
+                self.thread.join(timeout=1.0)
+        self.listener.running = True
         self.thread = threading.Thread(target=self.listener.listen, daemon=True)
         self.thread.start()
 
