@@ -3,7 +3,7 @@ from unified_ui.audio import AudioController
 from time import sleep
 
 import utils
-from controllers import WakeWordController, VoiceCommandController, CommandController, GestureController
+from controllers import WakeWordController, VoiceCommandController, CommandController, GestureController, GestureCommandController
 
 
 
@@ -45,7 +45,8 @@ def gesture_processor(gesture):
 wake_controller = WakeWordController(logger, on_wake_word_detected)
 voice_controller = VoiceCommandController(logger, voice_command)
 commands_controller = CommandController(logger)
-gestures_controller = GestureController(logger, gesture_processor, True)
+gesture_command_controller = GestureCommandController(logger)
+gesture_controller = GestureController(logger, gesture_command_controller, show_preview=True)
 
 
 
@@ -96,7 +97,7 @@ def toggle_voice_helper(state):
 
 def toggle_gestures_controls(state):
     if state:
-        gestures_controller.start()
+        gesture_controller.start()
     else:
-        gestures_controller.stop()
+        gesture_controller.stop()
     
