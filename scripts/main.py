@@ -9,6 +9,8 @@ from controllers import WakeWordController, VoiceCommandController, CommandContr
 
 logger = Logger()
 audio_controller = None
+voice_toggle = None
+gesture_toggle = None
 
 
 
@@ -22,19 +24,24 @@ def voice_command(parts):
         audio_controller.play("wrong")
         wake_controller.start()
     else:
-        execution = commands_controller.execute(parts)
+        execution, answer = commands_controller.execute(parts)
         if execution == 1:
             audio_controller.play("ok")
             sleep(1)
             audio_controller.play(utils.choose_sound("done"))
+            voice_controller.start()
         elif execution == 0:
             audio_controller.play("wrong")
             sleep(1)
             audio_controller.play(utils.choose_sound("unknown"))
         elif execution == -1:
             audio_controller.play("wrong")
+        elif execution == -2: #disable voice
+            pass
+        elif execution == 2: #enable gestures
+            pass
         else:
-            audio_controller.play(utils.choose_sound(execution))
+            audio_controller.play(utils.choose_sound(answer))
         wake_controller.start()
 
 def gesture_processor(gesture):
@@ -87,6 +94,9 @@ async def start(app):
 
     audio_controller.add_sound("unrecognised", "english/unrecognised_command.mp3")
     audio_controller.add_sound("not_understand", "english/not_understand.mp3")
+
+    audio_controller.add_sound("gestures_on", "english/gesture_control_on.mp3")
+
 
 
 def toggle_voice_helper(state):

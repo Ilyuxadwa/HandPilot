@@ -130,8 +130,8 @@ class GestureController:
       gesture (static poses, swipes, click_left, click_right) after it's
       confirmed/debounced.
     - gesture_command_controller.handle_move(x, y): every frame the hand is
-      in the "point" pointer state, with the midpoint between the index and
-      middle fingertips, in normalized (0-1) coordinates.
+      in the "point" pointer state, with the cursor tracking point (see
+      get_cursor_position), in normalized (0-1) coordinates.
  
     Deliberately holds a reference to gesture_command_controller rather than
     a bare (logger, callback) pair — unlike the voice pipeline's controllers,
@@ -219,11 +219,7 @@ class GestureController:
             gesture = self.detector.process_frame(frame)
  
             if self.detector.last_pointer_state == "point" and self.detector.last_hand_landmarks:
-                landmarks = self.detector.last_hand_landmarks
-                index_tip = landmarks[8]
-                middle_tip = landmarks[12]
-                cursor_x = (index_tip.x + middle_tip.x) / 2
-                cursor_y = (index_tip.y + middle_tip.y) / 2
+                cursor_x, cursor_y = self.get_cursor_position(self.detector.last_hand_landmarks)
                 self.gesture_command_controller.handle_move(cursor_x, cursor_y)
  
             if gesture:
@@ -245,18 +241,36 @@ class GestureController:
         if self.show_preview:
             cv2.destroyAllWindows()
  
+    def get_cursor_position(self, landmarks):
+        """The point used to drive the mouse cursor while pointer_state ==
+        'point': x is the midpoint between the index and middle fingertips;
+        y follows whichever of the two sits higher on screen (smaller
+        normalized y), so dropping one finger to click doesn't pull the
+        cursor's height down with it."""
+        index_tip = landmarks[8]
+        middle_tip = landmarks[12]
+        cursor_x = (index_tip.x + middle_tip.x) / 2
+        cursor_y = min(index_tip.y, middle_tip.y)
+        return cursor_x, cursor_y
+ 
     def render_preview(self, frame):
         """Draws landmarks + gesture text onto frame and shows it in a window.
         Returns False if the user pressed 'q' to close the preview."""
+        height, width = frame.shape[:2]
+ 
+        x_min, x_max, y_min, y_max = self.gesture_command_controller.get_active_region()
+        top_left = (int(x_min * width), int(y_min * height))
+        bottom_right = (int(x_max * width), int(y_max * height))
+        cv2.rectangle(frame, top_left, bottom_right, (0, 255, 255), 2)
+        cv2.putText(frame, "cursor zone", (top_left[0], top_left[1] - 8),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+ 
         if self.detector.last_hand_landmarks:
             self.draw_landmarks(frame, self.detector.last_hand_landmarks)
  
             if self.detector.last_pointer_state == "point":
-                landmarks = self.detector.last_hand_landmarks
-                height, width = frame.shape[:2]
-                cursor_x = int((landmarks[8].x + landmarks[12].x) / 2 * width)
-                cursor_y = int((landmarks[8].y + landmarks[12].y) / 2 * height)
-                cv2.circle(frame, (cursor_x, cursor_y), 8, (255, 0, 255), 2)
+                cursor_x, cursor_y = self.get_cursor_position(self.detector.last_hand_landmarks)
+                cv2.circle(frame, (int(cursor_x * width), int(cursor_y * height)), 8, (255, 0, 255), 2)
  
         raw_gesture = self.detector.last_raw_gesture_name or "no hand / no gesture"
         cv2.putText(frame, f"raw: {raw_gesture}", (10, 30),
@@ -298,42 +312,53 @@ class GestureCommandController:
     from GestureController into gesture_commands.py action functions. Mirrors
     CommandController's role on the voice side, but does exact-name lookup
     instead of fuzzy matching, since gesture names carry no free-text args."""
-
+ 
     MODES = {
         "standard": gesture_commands.STANDARD_GESTURE_COMMANDS,
         "gaming": gesture_commands.GAMING_GESTURE_COMMANDS,
     }
-
+ 
     def __init__(self, logger):
         self.logger = logger
         self.mode = "standard"
-
+ 
     def set_mode(self, mode):
         if mode not in self.MODES:
             if self.logger:
                 self.logger.error(f"Unknown gesture mode: {mode}")
             return
-
+ 
         self.mode = mode
         gesture_commands.reset_mouse_smoothing()
-
+ 
         if self.logger:
             self.logger.info(f"Gesture control mode set to: {mode}")
-
+ 
     def handle_gesture(self, gesture_name):
         commands = self.MODES[self.mode]
         action = commands.get(gesture_name)
-
+ 
         if not action:
             if self.logger:
                 self.logger.info(f"No action bound to gesture '{gesture_name}' in mode '{self.mode}'")
             return
-
+ 
         if self.logger:
             self.logger.info(f"Executing gesture action: {gesture_name} (mode={self.mode})")
         action()
-
+ 
     def handle_move(self, x, y):
         if self.mode != "standard":
             return
         gesture_commands.move_mouse(x, y)
+ 
+    def get_active_region(self):
+        """Returns (x_min, x_max, y_min, y_max) of the camera-frame rectangle
+        that gesture_commands.move_mouse maps onto the full screen — used by
+        GestureController to draw it in the preview window."""
+        return (
+            gesture_commands.ACTIVE_REGION_X_MIN,
+            gesture_commands.ACTIVE_REGION_X_MAX,
+            gesture_commands.ACTIVE_REGION_Y_MIN,
+            gesture_commands.ACTIVE_REGION_Y_MAX,
+        )
