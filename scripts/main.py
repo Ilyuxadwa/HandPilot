@@ -24,7 +24,7 @@ def voice_command(parts):
         audio_controller.play("wrong")
         wake_controller.start()
     else:
-        execution, answer = commands_controller.execute(parts)
+        execution = commands_controller.execute(parts)
         if execution == 1:
             audio_controller.play("ok")
             sleep(1)
@@ -41,7 +41,7 @@ def voice_command(parts):
         elif execution == 2: #enable gestures
             pass
         else:
-            audio_controller.play(utils.choose_sound(answer))
+            audio_controller.play(utils.choose_sound(execution))
         wake_controller.start()
 
 def gesture_processor(gesture):

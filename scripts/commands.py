@@ -14,6 +14,7 @@ from urllib.parse import quote_plus
 from rapidfuzz import fuzz, process
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
+
 APP_ALIASES = {
     "browser": "chrome",
 }
@@ -29,6 +30,19 @@ COMMON_FOLDERS = {
     "music": "Music",
     "videos": "Videos",
 }
+
+def parse_number(args):
+    if not args:
+        return None
+    joined = " ".join(args)
+    if joined.isdigit():
+        return int(joined)
+    try:
+        from word2number import w2n
+        return w2n.word_to_num(joined)
+    except (ValueError, ImportError):
+        return None
+
 
 shortcut_index = None
 
@@ -93,7 +107,7 @@ def find_running_process(app_name):
     names = {p.info["name"] for p in psutil.process_iter(["name"]) if p.info["name"]}
     if not names:
         return None
-    candidates = {n.rsplit(".", 1)[0].lower(): n for n in names}  # strip .exe for matching
+    candidates = {n.rsplit(".", 1)[0].lower(): n for n in names}
     best = process.extractOne(app_name, list(candidates.keys()), scorer=fuzz.WRatio)
     if best and best[1] >= FUZZY_THRESHOLD:
         return candidates[best[0]]
@@ -141,7 +155,7 @@ def unmute(args):
 
 def volume_up(args):
     import keyboard
-    presses = int(args[0]) if args and args[0].isdigit() else 2
+    presses = parse_number(args) or 2
     for _ in range(presses):
         keyboard.send("volume up")
     print(f"[commands] Volume up x{presses}")
@@ -149,17 +163,18 @@ def volume_up(args):
 
 def volume_down(args):
     import keyboard
-    presses = int(args[0]) if args and args[0].isdigit() else 2
+    presses = parse_number(args) or 2
     for _ in range(presses):
         keyboard.send("volume down")
     print(f"[commands] Volume down x{presses}")
 
 
 def set_volume(args):
-    if not args or not args[0].isdigit():
-        print("[commands] set_volume needs a number 0-100")
+    percent = parse_number(args)
+    if percent is None:
+        print("[commands] set volume needs a number 0-100")
         return
-    percent = max(0, min(100, int(args[0])))
+    percent = max(0, min(100, percent))
     get_volume_interface().SetMasterVolumeLevelScalar(percent / 100.0, None)
     print(f"[commands] Volume set to {percent}%")
 
@@ -218,8 +233,6 @@ def switch_mode(args):
         print(f"[commands] Failed to switch mode: {e}")
         return
 
-    # Broadcast the setting change so already-open apps (Explorer, taskbar)
-    # pick it up without a manual restart/relog.
     HWND_BROADCAST = 0xFFFF
     WM_SETTINGCHANGE = 0x001A
     SMTO_ABORTIFHUNG = 0x0002
@@ -310,6 +323,53 @@ def type_text(args):
     print(f"[commands] Typed: {text}")
 
 
+def get_brightness_objects():
+    import pythoncom
+    try:
+        pythoncom.CoInitialize()
+    except pythoncom.com_error:
+        pass
+    import wmi
+    c = wmi.WMI(namespace="wmi")
+    methods = c.WmiMonitorBrightnessMethods()[0]
+    current = c.WmiMonitorBrightness()[0].CurrentBrightness
+    return methods, current
+
+
+def set_brightness(args):
+    level = parse_number(args)
+    if level is None:
+        print("[commands] set brightness needs a number 0-100")
+        return
+    level = max(0, min(100, level))
+    try:
+        methods, _ = get_brightness_objects()
+        methods.WmiSetBrightness(level, 0)
+        print(f"[commands] Brightness set to {level}%")
+    except Exception as e:
+        print(f"[commands] Failed to set brightness (display may not support it): {e}")
+
+
+def adjust_brightness(delta):
+    try:
+        methods, current = get_brightness_objects()
+        new_level = max(0, min(100, current + delta))
+        methods.WmiSetBrightness(new_level, 0)
+        print(f"[commands] Brightness {'up' if delta > 0 else 'down'} to {new_level}%")
+    except Exception as e:
+        print(f"[commands] Failed to adjust brightness (display may not support it): {e}")
+
+
+def brightness_up(args):
+    step = parse_number(args) or 10
+    adjust_brightness(step)
+
+
+def brightness_down(args):
+    step = parse_number(args) or 10
+    adjust_brightness(-step)
+
+
 def lock_pc(args):
     ctypes.windll.user32.LockWorkStation()
     print("[commands] Locked workstation")
@@ -321,7 +381,6 @@ def sleep_pc(args):
 
 
 def shutdown_pc(args):
-    # 15s delay so a misheard command can be caught with "cancel shutdown"
     os.system("shutdown /s /t 15")
     print("[commands] Shutdown scheduled in 15s (say 'cancel shutdown' to abort)")
 
@@ -390,4 +449,7 @@ COMMANDS = {
     "mic mute": mic_mute,
     "mic unmute": mic_unmute,
     "type text": type_text,
+    "set brightness": set_brightness,
+    "brightness up": brightness_up,
+    "brightness down": brightness_down,
 }
