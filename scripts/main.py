@@ -29,7 +29,6 @@ def voice_command(parts):
             audio_controller.play("ok")
             sleep(1)
             audio_controller.play(utils.choose_sound("done"))
-            voice_controller.start()
         elif execution == 0:
             audio_controller.play("wrong")
             sleep(1)

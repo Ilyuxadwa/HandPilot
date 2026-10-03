@@ -1,4 +1,7 @@
 import pyautogui
+import screen_brightness_control as sbc
+
+from commands import volume_up, volume_down
 
 pyautogui.FAILSAFE = True
 
@@ -82,14 +85,49 @@ def click_right():
     print("[gesture_commands] Right click")
 
 
+# How much one brightness "notch" changes the screen, in percent. Untuned —
+# adjust if steps feel too big/small.
+BRIGHTNESS_STEP_PERCENT = 5
+
+
+def volume_up_step():
+    volume_up([])  # reuses commands.py's keyboard-based volume control as-is
+
+
+def volume_down_step():
+    volume_down([])
+
+
+def brightness_up_step():
+    try:
+        sbc.set_brightness(f"+{BRIGHTNESS_STEP_PERCENT}")
+        print(f"[gesture_commands] Brightness +{BRIGHTNESS_STEP_PERCENT}%")
+    except sbc.ScreenBrightnessError as e:
+        print(f"[gesture_commands] Could not adjust brightness: {e}")
+
+
+def brightness_down_step():
+    try:
+        sbc.set_brightness(f"-{BRIGHTNESS_STEP_PERCENT}")
+        print(f"[gesture_commands] Brightness -{BRIGHTNESS_STEP_PERCENT}%")
+    except sbc.ScreenBrightnessError as e:
+        print(f"[gesture_commands] Could not adjust brightness: {e}")
+
+
 # Discrete gesture_name -> action function, one dict per mode. Continuous
 # cursor movement is handled separately (see GestureCommandController) since
 # it isn't a discrete named event. click_left/click_right come from the
-# custom pointer-state logic (dropping the index or middle finger while in
-# the Victory-shaped "point" pose), not from the canned classifier.
+# pointer-state logic (dropping the index or middle finger while in the
+# Victory-shaped "point" pose). open_palm_increase/decrease and
+# closed_fist_increase/decrease come from holding Open_Palm/Closed_Fist and
+# moving up-or-right / down-or-left (see AdjustmentTracker).
 STANDARD_GESTURE_COMMANDS = {
     "click_left": click_left,
     "click_right": click_right,
+    "open_palm_increase": volume_up_step,
+    "open_palm_decrease": volume_down_step,
+    "closed_fist_increase": brightness_up_step,
+    "closed_fist_decrease": brightness_down_step,
 }
 
 GAMING_GESTURE_COMMANDS = {

@@ -125,39 +125,27 @@ class CommandController:
 
 class GestureController:
     """Runs webcam capture + gesture detection on a background thread and
-    dispatches everything into a single GestureCommandController:
+    dispatches everything into a single GestureCommandController. Has no
+    OpenCV dependency at all — camera capture and frame reading live in
+    GestureDetector (open_camera/read_frame), and all preview rendering
+    lives in GestureDetector.render_preview. This controller only starts/
+    stops the loop and sends whatever GestureDetector reports:
     - gesture_command_controller.handle_gesture(name): once per discrete
-      gesture (static poses, swipes, click_left, click_right) after it's
+      gesture (static poses, swipes, click_left, click_right,
+      open_palm_increase/decrease, closed_fist_increase/decrease) after it's
       confirmed/debounced.
     - gesture_command_controller.handle_move(x, y): every frame the hand is
-      in the "point" pointer state, with the cursor tracking point (see
-      get_cursor_position), in normalized (0-1) coordinates.
+      in the "point" pointer state, with the tracked cursor position.
  
     Deliberately holds a reference to gesture_command_controller rather than
     a bare (logger, callback) pair — unlike the voice pipeline's controllers,
     which stay wiring-agnostic in main.py, this one is tied directly to its
     command controller by design.
  
-    show_preview: when True, opens an OpenCV window showing the webcam feed
-    with hand landmarks, the current pointer state, and the currently
-    recognized gesture overlaid. Intended for development/tuning only — leave
-    off for the real app, since it opens a visible window and blocks on
-    cv2.waitKey each frame. Press 'q' in the preview window to stop the
-    controller."""
- 
-    # Standard 21-point MediaPipe hand landmark topology. Stable across API
-    # versions even though mediapipe.solutions.drawing_utils (which used to
-    # draw this for you) was removed from the package.
-    hand_connections = [
-        (0, 1), (1, 2), (2, 3), (3, 4),
-        (0, 5), (5, 6), (6, 7), (7, 8),
-        (5, 9), (9, 10), (10, 11), (11, 12),
-        (9, 13), (13, 14), (14, 15), (15, 16),
-        (13, 17), (17, 18), (18, 19), (19, 20),
-        (0, 17),
-    ]
- 
-    fired_label_duration_seconds = 1.0
+    show_preview: when True, shows an OpenCV window (via
+    GestureDetector.render_preview) with hand landmarks and detection state
+    overlaid. Intended for development/tuning only. Press 'q' in the preview
+    window to stop the controller."""
  
     def __init__(self, logger, gesture_command_controller, show_preview=False):
         self.logger = logger
@@ -166,9 +154,6 @@ class GestureController:
         self.running = False
         self.thread = None
         self.detector = None
-        self.capture = None
-        self.last_fired_gesture = None
-        self.last_fired_time = 0.0
  
     def start(self):
         if self.running:
@@ -184,22 +169,14 @@ class GestureController:
         if self.thread:
             self.thread.join(timeout=2)
  
-        if self.capture:
-            self.capture.release()
-            self.capture = None
- 
         if self.detector:
             self.detector.close()
             self.detector = None
  
-        if self.show_preview:
-            cv2.destroyAllWindows()
- 
     def run(self):
         self.detector = GestureDetector(logger=self.logger)
-        self.capture = cv2.VideoCapture(0)
  
-        if not self.capture.isOpened():
+        if not self.detector.open_camera():
             if self.logger:
                 self.logger.error("GestureController could not open webcam")
             self.running = False
@@ -209,101 +186,29 @@ class GestureController:
             self.logger.info("GestureController started")
  
         while self.running:
-            success, frame = self.capture.read()
+            frame = self.detector.read_frame()
  
-            if not success:
+            if frame is None:
                 continue
  
-            # Mirror so movement direction matches what the user sees of themselves.
-            frame = cv2.flip(frame, 1)
             gesture = self.detector.process_frame(frame)
  
-            if self.detector.last_pointer_state == "point" and self.detector.last_hand_landmarks:
-                cursor_x, cursor_y = self.get_cursor_position(self.detector.last_hand_landmarks)
+            if self.detector.last_cursor_position:
+                cursor_x, cursor_y = self.detector.last_cursor_position
                 self.gesture_command_controller.handle_move(cursor_x, cursor_y)
  
             if gesture:
                 if self.logger:
                     self.logger.info(f"Gesture recognized: {gesture}")
-                self.last_fired_gesture = gesture
-                self.last_fired_time = time.time()
                 self.gesture_command_controller.handle_gesture(gesture)
  
             if self.show_preview:
-                if not self.render_preview(frame):
+                active_region = self.gesture_command_controller.get_active_region()
+                if not self.detector.render_preview(frame, active_region):
                     self.running = False
  
-        self.capture.release()
-        self.capture = None
         self.detector.close()
         self.detector = None
- 
-        if self.show_preview:
-            cv2.destroyAllWindows()
- 
-    def get_cursor_position(self, landmarks):
-        """The point used to drive the mouse cursor while pointer_state ==
-        'point': x is the midpoint between the index and middle fingertips;
-        y follows whichever of the two sits higher on screen (smaller
-        normalized y), so dropping one finger to click doesn't pull the
-        cursor's height down with it."""
-        index_tip = landmarks[8]
-        middle_tip = landmarks[12]
-        cursor_x = (index_tip.x + middle_tip.x) / 2
-        cursor_y = min(index_tip.y, middle_tip.y)
-        return cursor_x, cursor_y
- 
-    def render_preview(self, frame):
-        """Draws landmarks + gesture text onto frame and shows it in a window.
-        Returns False if the user pressed 'q' to close the preview."""
-        height, width = frame.shape[:2]
- 
-        x_min, x_max, y_min, y_max = self.gesture_command_controller.get_active_region()
-        top_left = (int(x_min * width), int(y_min * height))
-        bottom_right = (int(x_max * width), int(y_max * height))
-        cv2.rectangle(frame, top_left, bottom_right, (0, 255, 255), 2)
-        cv2.putText(frame, "cursor zone", (top_left[0], top_left[1] - 8),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
- 
-        if self.detector.last_hand_landmarks:
-            self.draw_landmarks(frame, self.detector.last_hand_landmarks)
- 
-            if self.detector.last_pointer_state == "point":
-                cursor_x, cursor_y = self.get_cursor_position(self.detector.last_hand_landmarks)
-                cv2.circle(frame, (int(cursor_x * width), int(cursor_y * height)), 8, (255, 0, 255), 2)
- 
-        raw_gesture = self.detector.last_raw_gesture_name or "no hand / no gesture"
-        cv2.putText(frame, f"raw: {raw_gesture}", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
- 
-        pointer_state = self.detector.last_pointer_state or "none"
-        cv2.putText(frame, f"pointer state: {pointer_state}", (10, 130),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
- 
-        if self.detector.last_pinch_distance is not None:
-            cv2.putText(frame, f"pinch dist: {self.detector.last_pinch_distance:.3f}", (10, 100),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
- 
-        showing_fired = (self.last_fired_gesture
-                         and time.time() - self.last_fired_time < self.fired_label_duration_seconds)
-        if showing_fired:
-            cv2.putText(frame, f"FIRED: {self.last_fired_gesture}", (10, 65),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
- 
-        cv2.imshow("HandPilot Gesture Preview", frame)
-        return cv2.waitKey(1) & 0xFF != ord("q")
- 
-    def draw_landmarks(self, frame, landmarks):
-        height, width = frame.shape[:2]
-        points = [(int(landmark.x * width), int(landmark.y * height)) for landmark in landmarks]
- 
-        for start_index, end_index in self.hand_connections:
-            cv2.line(frame, points[start_index], points[end_index], (0, 255, 0), 2)
- 
-        for point in points:
-            cv2.circle(frame, point, 4, (0, 0, 255), -1)
- 
-        return frame
 
 
 
