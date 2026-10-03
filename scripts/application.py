@@ -5,6 +5,13 @@ import info
 import main
 import utils
 
+
+
+def loading_ui(app):
+    app.add_element(app.alignment("rcenter", ft.Text("Your assistant is preparing!", style = tools.primary_text_style(app, 80)), width = tools.adapt_dimensions(app, "w", 100), spacing = tools.adapt_dimensions(app, "w", 4), expand = True))
+    app.add_element(app.alignment("rcenter", ft.Text("Waiting for initialization...", style = tools.secondary_text_style(app, 18)), width = tools.adapt_dimensions(app, "w", 100), spacing = tools.adapt_dimensions(app, "w", 4), expand = True))
+
+
 def main_ui(app):
     def toggle_text(txt):
         return ft.Text(txt, style = tools.primary_text_style(app, 32))
@@ -18,7 +25,7 @@ def main_ui(app):
     app.add_element(app.alignment("rspace_evenly", 
                         app.alignment("rcenter", toggle_text("Voice Helper"), voice_toggle),
                         app.alignment("rcenter", toggle_text("Gestures Control"), gestures_toggle)))
-
+    
 def build():
     app = App()
 
@@ -27,6 +34,7 @@ def build():
 
     app.allow_delete_saved()
 
+    app.add_page("loading_page", loading_ui)
     app.add_page("main_page", main_ui)
 
     app.set_async_next(main.start)

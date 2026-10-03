@@ -96,6 +96,8 @@ async def start(app):
 
     audio_controller.add_sound("gestures_on", "english/gesture_control_on.mp3")
 
+    audio_controller.on_ready(lambda: app.navigate("main_page"))
+
 
 
 def toggle_voice_helper(state):
@@ -107,6 +109,7 @@ def toggle_voice_helper(state):
 def toggle_gestures_controls(state):
     if state:
         gesture_controller.start()
+        audio_controller.play("gestures_on")
     else:
         gesture_controller.stop()
     
