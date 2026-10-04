@@ -274,39 +274,27 @@ class GestureCommandController:
 
 
 class GameProfilerController:
-    def __init__(self, profiles_dir="games"):
-        self.profiles_dir = Path(profiles_dir)
-        self.profilers = {}
+    def __init__(self):
+        self.profilers = []
 
-    @property
-    def running(self):
-        return list(self.profilers)
-
-    def available_profiles(self):
-        return sorted(self.profiles_dir.glob("*.hpgame"))
-
-    def start(self, path):
-        key = str(Path(path).resolve())
-        if key not in self.profilers:
-            profiler = GameProfiler(parse_hpgame(path))
+    def add(self, profiler):
+        if profiler not in self.profilers:
             profiler.start()
-            self.profilers[key] = profiler
+            self.profilers.append(profiler)
 
-    def stop(self, path=None):
-        keys = list(self.profilers) if path is None else [str(Path(path).resolve())]
-        for key in keys:
-            profiler = self.profilers.pop(key, None)
-            if profiler:
-                profiler.stop()
+    def remove(self, profiler):
+        if profiler in self.profilers:
+            profiler.stop()
+            self.profilers.remove(profiler)
 
-    def action(self, name, duration=None):
-        for profiler in list(self.profilers.values()):
-            profiler.action(name, duration)
+    def action(self, name, argument=None, duration=None):
+        for profiler in self.profilers:
+            profiler.action(name, argument, duration)
 
-    def release(self, name):
-        for profiler in list(self.profilers.values()):
-            profiler.release(name)
+    def release(self, name, argument=None):
+        for profiler in self.profilers:
+            profiler.release(name, argument)
 
     def release_all(self):
-        for profiler in list(self.profilers.values()):
+        for profiler in self.profilers:
             profiler.release_all()

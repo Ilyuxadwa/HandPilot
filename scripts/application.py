@@ -15,7 +15,17 @@ def loading_ui(app):
 def main_ui(app):
     def toggle_text(txt):
         return ft.Text(txt, style = tools.primary_text_style(app, 32))
+
+    def profiler_row(name):
+        row = None
+
+        def on_change():
+            main.toggle_game_profiler(name, row.controls[1].value)
     
+        row = app.alignment("rcenter", toggle_text(name), tools.switch(app, 18, on_change=on_change))
+        return row
+
+
     icon, msg = utils.welcome_message()
     app.add_element(app.alignment("rcenter", ft.Icon(icon, color = app.theme.primary, size = tools.adapt_dimensions(app, "w", 7)), ft.Text(msg, style = tools.primary_text_style(app, 48, weight = ft.FontWeight.BOLD)), width = tools.adapt_dimensions(app, "w", 100)))
 
@@ -25,6 +35,9 @@ def main_ui(app):
     app.add_element(app.alignment("rspace_evenly", 
                         app.alignment("rcenter", toggle_text("Voice Helper"), voice_toggle),
                         app.alignment("rcenter", toggle_text("Gestures Control"), gestures_toggle)))
+
+    Profilers = [profiler_row(name) for name in main.profilers]
+    app.add_element(app.alignment("cstart", *Profilers))
     
 def build():
     app = App()

@@ -3,7 +3,8 @@ from unified_ui.audio import AudioController
 from time import sleep
 
 import utils
-from controllers import WakeWordController, VoiceCommandController, CommandController, GestureController, GestureCommandController
+from game_profiler import GameProfiler
+from controllers import WakeWordController, VoiceCommandController, CommandController, GestureController, GestureCommandController, GameProfilerController
 
 
 
@@ -11,6 +12,8 @@ logger = Logger()
 audio_controller = None
 voice_toggle = None
 gesture_toggle = None
+
+profilers: dict[str, GameProfiler] = {}
 
 
 
@@ -50,12 +53,14 @@ voice_controller = VoiceCommandController(logger, voice_command)
 commands_controller = CommandController(logger)
 gesture_command_controller = GestureCommandController(logger)
 gesture_controller = GestureController(logger, gesture_command_controller, show_preview=True)
-
+profiler_controller = GameProfilerController()
 
 
 
 async def start(app):
     global audio_controller
+    global profilers
+    profilers = utils.get_games()
     audio_controller = AudioController(app.page)
     audio_controller.set_volume(0.5)
     audio_controller.add_sound("ok", "misc/ok.mp3")
@@ -111,4 +116,11 @@ def toggle_gestures_controls(state):
         audio_controller.play("gestures_on")
     else:
         gesture_controller.stop()
+
+def toggle_game_profiler(name, enabled):
+    profiler = profilers[name]
+    if enabled:
+        profiler_controller.add(profiler)
+    else:
+        profiler_controller.remove(profiler)
     

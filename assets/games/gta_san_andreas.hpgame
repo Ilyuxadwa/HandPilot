@@ -1,0 +1,43 @@
+[game]
+name = GTA San Andreas
+controls = keyboard_mouse
+
+[settings]
+mouse_speed = 500
+tick_rate = 120
+tap_time = 0.08
+
+[bindings]
+# movement: on foot, and accelerate / brake / steer in a vehicle
+move.forward = key:w hold
+move.back    = key:s hold
+move.left    = key:a hold
+move.right   = key:d hold
+
+# camera and aiming with the mouse
+look.left  = mouse:x- hold force=0.6
+look.right = mouse:x+ hold force=0.6
+look.up    = mouse:y+ hold force=0.6
+look.down  = mouse:y- hold force=0.6
+
+# on foot
+run     = key:space hold
+jump    = key:shift click
+crouch  = key:c click
+fire    = mouse:left click
+aim     = mouse:right hold
+behind  = mouse:middle click
+
+# vehicles
+enter     = key:f click
+handbrake = key:space hold
+
+# weapons and misc
+weapon.next     = key:e click
+weapon.previous = key:q click
+camera          = key:v click
+reply.yes       = key:y click
+reply.no        = key:n click
+gang.active     = key:g hold
+gang.passive    = key:h hold
+pause           = key:esc click

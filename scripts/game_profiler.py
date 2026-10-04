@@ -4,8 +4,9 @@ import atexit
 import re
 import threading
 import time
+from pathlib import Path
 
-from game_parser import GAMEPAD_BUTTONS, TRIGGERS, Binding, GameProfile
+from game_parser import GAMEPAD_BUTTONS, TRIGGERS, Binding, GameProfile, parse_hpgame
 
 DURATION = re.compile(r"(\d+(?:\.\d+)?)\s*(ms|s|m)?", re.IGNORECASE)
 UNITS = {"ms": 0.001, "s": 1.0, "m": 60.0}
@@ -139,6 +140,8 @@ class GameProfiler:
         backend.stop()
 
     def action(self, name, argument=None, duration=None):
+        if not self.running:
+            return
         key = name.lower()
         if argument is not None:
             grouped = f"{key}.{str(argument).lower()}"

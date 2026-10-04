@@ -1,13 +1,29 @@
 from flet import Icons
-
-import json
 import random
+import json
+import os
+
+from game_profiler import GameProfiler
+from game_parser import parse_hpgame
+
+
 
 with open("config/icons.json", "r", encoding="utf-8") as f:
     icon_map = json.load(f)
 
 with open("config/welcome_messages.json", "r", encoding="utf-8") as f:
     welcome_messages = json.load(f)
+
+
+
+def get_games():
+    profilers = {}
+    for file_name in sorted(os.listdir("assets/games")):
+        if file_name.lower().endswith(".hpgame"):
+            profiler = GameProfiler(parse_hpgame(os.path.join("assets/games", file_name)))
+            profilers[profiler.profile.name] = profiler
+    return profilers
+
 
 def icon(name: str):
     icon_key = icon_map.get(name)
