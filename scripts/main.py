@@ -43,9 +43,6 @@ def voice_command(parts):
             audio_controller.play(utils.choose_sound(execution))
         wake_controller.start()
 
-def gesture_processor(gesture):
-    pass
-
 
 
 wake_controller = WakeWordController(logger, on_wake_word_detected)
@@ -53,6 +50,7 @@ voice_controller = VoiceCommandController(logger, voice_command)
 commands_controller = CommandController(logger)
 gesture_command_controller = GestureCommandController(logger)
 gesture_controller = GestureController(logger, gesture_command_controller, show_preview=True)
+
 
 
 
@@ -103,6 +101,7 @@ async def start(app):
 def toggle_voice_helper(state):
     if state:
         wake_controller.start()
+        audio_controller.play(utils.choose_sound("greetings"))
     else:
         wake_controller.stop()
 

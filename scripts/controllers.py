@@ -5,7 +5,10 @@ import cv2
 
 from gesture_detection import GestureDetector
 from wake_word import WakeWordListener
+from game_profiler import GameProfiler
 from listener import CommandListener
+from game_parser import parse_hpgame
+from pathlib import Path
 import gesture_commands
 import commands
 
@@ -267,3 +270,43 @@ class GestureCommandController:
             gesture_commands.ACTIVE_REGION_Y_MIN,
             gesture_commands.ACTIVE_REGION_Y_MAX,
         )
+
+
+
+class GameProfilerController:
+    def __init__(self, profiles_dir="games"):
+        self.profiles_dir = Path(profiles_dir)
+        self.profilers = {}
+
+    @property
+    def running(self):
+        return list(self.profilers)
+
+    def available_profiles(self):
+        return sorted(self.profiles_dir.glob("*.hpgame"))
+
+    def start(self, path):
+        key = str(Path(path).resolve())
+        if key not in self.profilers:
+            profiler = GameProfiler(parse_hpgame(path))
+            profiler.start()
+            self.profilers[key] = profiler
+
+    def stop(self, path=None):
+        keys = list(self.profilers) if path is None else [str(Path(path).resolve())]
+        for key in keys:
+            profiler = self.profilers.pop(key, None)
+            if profiler:
+                profiler.stop()
+
+    def action(self, name, duration=None):
+        for profiler in list(self.profilers.values()):
+            profiler.action(name, duration)
+
+    def release(self, name):
+        for profiler in list(self.profilers.values()):
+            profiler.release(name)
+
+    def release_all(self):
+        for profiler in list(self.profilers.values()):
+            profiler.release_all()
