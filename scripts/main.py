@@ -50,10 +50,10 @@ def voice_command(parts):
 
 wake_controller = WakeWordController(logger, on_wake_word_detected)
 voice_controller = VoiceCommandController(logger, voice_command)
-commands_controller = CommandController(logger)
+profiler_controller = GameProfilerController()
+commands_controller = CommandController(logger, profiler_controller)
 gesture_command_controller = GestureCommandController(logger)
 gesture_controller = GestureController(logger, gesture_command_controller, show_preview=True)
-profiler_controller = GameProfilerController()
 
 
 

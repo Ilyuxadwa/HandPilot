@@ -22,7 +22,7 @@ def main_ui(app):
         def on_change():
             main.toggle_game_profiler(name, row.controls[1].value)
     
-        row = app.alignment("rcenter", toggle_text(name), tools.switch(app, 18, on_change=on_change))
+        row = app.alignment("rcenter", ft.IconButton(utils.icon("settings"), style = tools.additional_button_style(app, 18)), toggle_text(name), tools.switch(app, 18, on_change=on_change))
         return row
 
 

@@ -2,6 +2,7 @@ from rapidfuzz import fuzz
 import threading
 import time
 import cv2
+import re
 
 from gesture_detection import GestureDetector
 from wake_word import WakeWordListener
@@ -72,20 +73,26 @@ class CommandController:
         "how_are_you": ["how are you", "how's it going", "how are you doing"],
     }
 
-
-    def __init__(self, logger):
+    def __init__(self, logger, game_controller=None):
         self.logger = logger
         self.commands = commands.COMMANDS
+        self.game_controller = game_controller
         self.phrase_to_intent = {
             phrase: intent
             for intent, phrases in self.SPECIAL_PHRASES.items()
             for phrase in phrases
         }
 
-
     def command_names(self):
         return list(self.commands.keys())
 
+    def game_action_names(self):
+        names = set()
+        if self.game_controller:
+            for profiler in self.game_controller.profilers:
+                for key in profiler.profile.bindings:
+                    names.add(key.split(".", 1)[0])
+        return names
 
     def best_match(self, parts, candidates):
         best_key, best_score, words_consumed = None, 0, 0
@@ -99,6 +106,17 @@ class CommandController:
                 best_key, best_score, words_consumed = key, score, word_count
         return best_key, best_score, words_consumed
 
+    def parse_duration(self, parts):
+        if not parts:
+            return None
+        joined = " ".join(parts)
+        match = re.match(r"^(\d+)\s*(s|sec|secs|second|seconds)?$", joined)
+        if match:
+            return f"{match.group(1)}s"
+        number = commands.parse_number(parts)
+        if number is not None:
+            return f"{number}s"
+        return joined
 
     def execute(self, parts):
         if not parts:
@@ -106,12 +124,22 @@ class CommandController:
 
         phrase_key, phrase_score, _ = self.best_match(parts, self.phrase_to_intent)
         cmd_name, cmd_score, cmd_len = self.best_match(parts, self.commands)
+        action_name, action_score, action_len = self.best_match(parts, self.game_action_names())
 
-        if phrase_key and phrase_score >= self.MATCH_THRESHOLD and phrase_score >= cmd_score:
+        if phrase_score >= self.MATCH_THRESHOLD and phrase_score >= cmd_score and phrase_score >= action_score:
             intent = self.phrase_to_intent[phrase_key]
             if self.logger:
                 self.logger.info(f"Matched phrase '{phrase_key}' -> {intent} (score={phrase_score:.0f})")
             return intent
+
+        if action_name and action_score >= self.MATCH_THRESHOLD and action_score >= cmd_score:
+            remainder = parts[action_len:]
+            argument = remainder[0] if remainder else None
+            duration = self.parse_duration(remainder[1:]) if len(remainder) > 1 else None
+            if self.logger:
+                self.logger.info(f"Game action: {action_name} argument={argument} duration={duration} (score={action_score:.0f})")
+            self.game_controller.action(action_name, argument, duration)
+            return 1
 
         if not cmd_name or cmd_score < self.MATCH_THRESHOLD:
             if self.logger:
