@@ -1,0 +1,33 @@
+[game]
+name = Minecraft 2.0
+controls = keyboard_mouse
+
+[settings]
+mouse_speed = 500
+tick_rate = 120
+tap_time = 0.08
+
+[bindings]
+# movement: on foot, and accelerate / brake / steer in a vehicle
+move.forward = key:w hold
+move.back    = key:s hold
+move.left    = key:a hold
+move.right   = key:d hold
+
+# camera and aiming with the mouse
+look.left  = mouse:x- hold force=0.6
+look.right = mouse:x+ hold force=0.6
+look.up    = mouse:y+ hold force=0.6
+look.down  = mouse:y- hold force=0.6
+
+# on foot
+jump    = key:space click
+shift  = key:shift hold
+attack    = mouse:left click
+action     = mouse:right click
+
+# misc
+next     = key:e click
+previous = key:q click
+camera          = key:f5 click
+pause           = key:esc click
