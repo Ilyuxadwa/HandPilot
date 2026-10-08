@@ -6,6 +6,14 @@ import main
 import utils
 
 
+def profiler_config_dialog(app, profiler):
+    def build_rows():
+        rows = []
+        for key, value in main.profilers[profiler].get_keys().items():
+            rows.append(app.alignment("rspace_between", ft.Text(key, style = tools.primary_text_style(app, 18)), ft.TextField(value=value, width = tools.adapt_dimensions(app, "w", 40)), spacing = tools.adapt_dimensions(app, "w", 4)))
+        return rows
+    config_rows = build_rows()
+    app.open_dialog(ft.AlertDialog(title = ft.Text(profiler, style = tools.primary_text_style(app, 38)), content = app.alignment("cstart", *config_rows, spacing = tools.adapt_dimensions(app, "w", 4), expand = True), bgcolor = app.theme.background, actions = [ft.Button("Save", style = tools.ok_button_style(app, 14), on_click=lambda e: app.page.pop_dialog())], actions_alignment = ft.MainAxisAlignment.END, modal = True))
 
 def loading_ui(app):
     app.add_element(app.alignment("rcenter", ft.Text("Your assistant is preparing!", style = tools.primary_text_style(app, 80)), width = tools.adapt_dimensions(app, "w", 100), spacing = tools.adapt_dimensions(app, "w", 4), expand = True))
@@ -21,8 +29,11 @@ def main_ui(app):
 
         def on_change():
             main.toggle_game_profiler(name, row.controls[2].value)
-    
-        row = app.alignment("rcenter", ft.IconButton(utils.icon("settings"), style = tools.main_button_style(app, 18)), app.alignment("rcenter", toggle_text(name, 28), width = tools.adapt_dimensions(app, "w", 20)), tools.switch(app, 18, on_change=on_change), spacing = tools.adapt_dimensions(app, "w", 6))
+
+        def open_config():
+            profiler_config_dialog(app, name)
+
+        row = app.alignment("rcenter", ft.IconButton(utils.icon("settings"), style = tools.main_button_style(app, 18), on_click=open_config), app.alignment("rcenter", toggle_text(name, 28), width = tools.adapt_dimensions(app, "w", 20)), tools.switch(app, 18, on_change=on_change), spacing = tools.adapt_dimensions(app, "w", 6))
         return row
 
 

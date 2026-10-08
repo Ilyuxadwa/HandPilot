@@ -107,6 +107,7 @@ class GameProfiler:
         self.held: set[str] = set()
         self.levels: dict[str, dict[str, float]] = {}
         self.timers: dict[str, threading.Timer] = {}
+        self.user_keys: dict[str, str] = {}
         self.ticker: threading.Thread | None = None
         self.ticker_stop: threading.Event | None = None
         atexit.register(self.stop)
@@ -138,6 +139,18 @@ class GameProfiler:
         if thread is not None:
             thread.join(timeout=1.0)
         backend.stop()
+
+    def get_default_keys(self):
+        return dict(self.profile.defaults)
+
+    def get_keys(self):
+        return {**self.profile.defaults, **self.user_keys}
+
+    def set_key(self, action, gesture):
+        self.user_keys[action.lower()] = gesture
+
+    def reset_key(self, action):
+        self.user_keys.pop(action.lower(), None)
 
     def action(self, name, argument=None, duration=None):
         if not self.running:

@@ -31,3 +31,11 @@ next     = key:e click
 previous = key:q click
 camera          = key:f5 click
 pause           = key:esc click
+
+[defaults]
+move.forward = fist
+move.back    = palm
+move.left    = swipe_left
+move.right   = swipe_right
+attack       = click_left
+action       = click_right

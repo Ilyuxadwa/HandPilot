@@ -43,6 +43,7 @@ class GameProfile:
     path: Path
     settings: dict[str, float] = field(default_factory=dict)
     bindings: dict[str, Binding] = field(default_factory=dict)
+    defaults: dict[str, str] = field(default_factory=dict)
 
     @property
     def needs_mouse_ticker(self) -> bool:
@@ -90,4 +91,5 @@ def parse_hpgame(path: str | Path) -> GameProfile:
         path=path,
         settings=settings,
         bindings={action: parse_binding(raw) for action, raw in parser["bindings"].items()},
+        defaults=dict(parser["defaults"]) if parser.has_section("defaults") else {},
     )
