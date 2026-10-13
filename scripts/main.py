@@ -38,10 +38,12 @@ def voice_command(parts):
             audio_controller.play(utils.choose_sound("unknown"))
         elif execution == -1:
             audio_controller.play("wrong")
-        elif execution == -2: #disable voice
-            pass
-        elif execution == 2: #enable gestures
-            pass
+        elif execution == -2: 
+            disable_gestures_controls()
+        elif execution == 2:
+            enable_gestures_controls()
+        elif execution == -3:
+            disable_voice_helper()
         else:
             audio_controller.play(utils.choose_sound(execution))
         wake_controller.start()
@@ -98,10 +100,33 @@ async def start(app):
     audio_controller.add_sound("not_understand", "english/not_understand.mp3")
 
     audio_controller.add_sound("gestures_on", "english/gesture_control_on.mp3")
+    audio_controller.add_sound("gestures_off", "english/gesture_control_off.mp3")
 
     audio_controller.on_ready(lambda: app.navigate("main_page"))
 
+def disable_voice_helper():
+    global voice_toggle
+    if voice_toggle.value:
+        wake_controller.stop()
+        voice_toggle.value = False
+        voice_toggle.update()
+        audio_controller.play(utils.choose_sound("farewell"))
 
+def enable_gestures_controls():
+    global gesture_toggle
+    if not gesture_toggle.value:
+        gesture_controller.start()
+        gesture_toggle.value = True
+        gesture_toggle.update()
+        audio_controller.play("gestures_on")
+
+def disable_gestures_controls():
+    global gesture_toggle
+    if gesture_toggle.value:
+        gesture_controller.stop()
+        gesture_toggle.value = False
+        gesture_toggle.update()
+        audio_controller.play("gestures_off")
 
 def toggle_voice_helper(state):
     if state:
@@ -109,6 +134,7 @@ def toggle_voice_helper(state):
         audio_controller.play(utils.choose_sound("greetings"))
     else:
         wake_controller.stop()
+        audio_controller.play(utils.choose_sound("farewell"))
 
 def toggle_gestures_controls(state):
     if state:
@@ -116,6 +142,7 @@ def toggle_gestures_controls(state):
         audio_controller.play("gestures_on")
     else:
         gesture_controller.stop()
+        audio_controller.play("gestures_off")
 
 def toggle_game_profiler(name, enabled):
     profiler = profilers[name]

@@ -73,6 +73,13 @@ class CommandController:
         "how_are_you": ["how are you", "how's it going", "how are you doing"],
     }
 
+    CONTROL_PHRASES = {
+        2: ["enable gestures", "turn on gestures", "start gestures", "gestures on"],
+        -2: ["disable gestures", "turn off gestures", "stop gestures", "gestures off"],
+        -3: ["disable voice", "turn off voice", "stop listening", "voice off",
+             "disable voice control"],
+    }
+
     def __init__(self, logger, game_controller=None):
         self.logger = logger
         self.commands = commands.COMMANDS
@@ -80,6 +87,11 @@ class CommandController:
         self.phrase_to_intent = {
             phrase: intent
             for intent, phrases in self.SPECIAL_PHRASES.items()
+            for phrase in phrases
+        }
+        self.phrase_to_control = {
+            phrase: code
+            for code, phrases in self.CONTROL_PHRASES.items()
             for phrase in phrases
         }
 
@@ -122,9 +134,14 @@ class CommandController:
         if not parts:
             return -1
 
+        control_key, control_score, _ = self.best_match(parts, self.phrase_to_control)
         phrase_key, phrase_score, _ = self.best_match(parts, self.phrase_to_intent)
         cmd_name, cmd_score, cmd_len = self.best_match(parts, self.commands)
         action_name, action_score, action_len = self.best_match(parts, self.game_action_names())
+
+        if (control_score >= self.MATCH_THRESHOLD and control_score >= phrase_score
+                and control_score >= action_score and control_score >= cmd_score):
+            return self.phrase_to_control[control_key]
 
         if phrase_score >= self.MATCH_THRESHOLD and phrase_score >= cmd_score and phrase_score >= action_score:
             intent = self.phrase_to_intent[phrase_key]

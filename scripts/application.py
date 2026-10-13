@@ -40,12 +40,12 @@ def main_ui(app):
     icon, msg = utils.welcome_message()
     app.add_element(app.alignment("rcenter", ft.Icon(icon, color = app.theme.primary, size = tools.adapt_dimensions(app, "w", 7)), ft.Text(msg, style = tools.primary_text_style(app, 48, weight = ft.FontWeight.BOLD)), width = tools.adapt_dimensions(app, "w", 100)))
 
-    voice_toggle = tools.switch(app, 24, on_change = lambda: main.toggle_voice_helper(voice_toggle.value))
-    gestures_toggle = tools.switch(app, 24, on_change = lambda: main.toggle_gestures_controls(gestures_toggle.value))
+    main.voice_toggle = tools.switch(app, 24, on_change = lambda: main.toggle_voice_helper(main.voice_toggle.value))
+    main.gesture_toggle = tools.switch(app, 24, on_change = lambda: main.toggle_gestures_controls(main.gesture_toggle.value))
 
     app.add_element(app.alignment("rspace_evenly", 
-                        app.alignment("rcenter", toggle_text("Voice Helper"), voice_toggle),
-                        app.alignment("rcenter", toggle_text("Gestures Control"), gestures_toggle)))
+                        app.alignment("rcenter", toggle_text("Voice Helper"), main.voice_toggle),
+                        app.alignment("rcenter", toggle_text("Gestures Control"), main.gesture_toggle)))
     app.add_devider()
     app.add_element(app.alignment("rcenter", ft.Text("Game Profilers", style = tools.primary_text_style(app, 36, weight = ft.FontWeight.BOLD), height = tools.adapt_dimensions(app, "h", 12))))
 
