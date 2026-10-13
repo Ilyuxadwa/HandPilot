@@ -9,7 +9,7 @@ from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision as mp_vision
 
 GESTURE_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task"
-GESTURE_MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "gesture_recognizer.task")
+GESTURE_MODEL_PATH = "assets/models/cv/gesture_recognizer.task"
 
 # Canned poses from MediaPipe's classifier that we act on as one-shot events.
 # "Victory" and "Pointing_Up" are left out: their shapes are claimed by the
