@@ -24,6 +24,7 @@ look.down  = mouse:y- hold force=0.6
 jump    = key:space click
 shift  = key:shift hold
 attack    = mouse:left click
+attack.advanced    = key:space click, wait 0.25s, mouse:left click
 action     = mouse:right click
 
 # misc
@@ -39,3 +40,6 @@ move.left    = swipe_left
 move.right   = swipe_right
 attack       = click_left
 action       = click_right
+
+[combos]
+sprint_hit = shift 1s + move.forward 1s, wait 0.2s, attack

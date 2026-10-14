@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import configparser
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -36,6 +37,12 @@ class Binding:
         return self.kind in ("mouse_axis", "axis")
 
 
+@dataclass(frozen=True)
+class Step:
+    wait: str | None = None
+    actions: tuple[tuple[str, str | None], ...] = ()
+
+
 @dataclass
 class GameProfile:
     name: str
@@ -44,6 +51,7 @@ class GameProfile:
     settings: dict[str, float] = field(default_factory=dict)
     bindings: dict[str, Binding] = field(default_factory=dict)
     defaults: dict[str, str] = field(default_factory=dict)
+    combos: dict[str, list[Step]] = field(default_factory=dict)
 
     @property
     def needs_mouse_ticker(self) -> bool:
@@ -71,6 +79,46 @@ def parse_binding(text: str) -> Binding:
     return Binding(kind, target, sign, mode, force)
 
 
+def parse_combo(text: str) -> list[Step]:
+    steps = []
+    for part in text.split(","):
+        part = part.strip()
+        if part.lower().startswith("wait "):
+            steps.append(Step(wait=part[5:].strip()))
+        else:
+            actions = []
+            for item in part.split("+"):
+                tokens = item.split()
+                actions.append((tokens[0].lower(), tokens[1] if len(tokens) > 1 else None))
+            steps.append(Step(actions=tuple(actions)))
+    return steps
+
+
+def is_sequence(text: str) -> bool:
+    return "," in text or " + " in text or text.lower().startswith("wait ")
+
+
+def parse_sequence(name: str, text: str, bindings: dict[str, Binding]) -> list[Step]:
+    steps = []
+    count = 0
+    for part in text.split(","):
+        part = part.strip()
+        if part.lower().startswith("wait "):
+            steps.append(Step(wait=part[5:].strip()))
+            continue
+        actions = []
+        for item in re.split(r"\s\+\s", part):
+            tokens = item.split()
+            options = [t for t in tokens[1:] if t.lower() in ("hold", "click") or t.lower().startswith("force=")]
+            duration = next((t for t in tokens[1:] if t not in options), None)
+            count += 1
+            hidden = f"{name}#{count}"
+            bindings[hidden] = parse_binding(" ".join([tokens[0], *options]))
+            actions.append((hidden, duration))
+        steps.append(Step(actions=tuple(actions)))
+    return steps
+
+
 def parse_hpgame(path: str | Path) -> GameProfile:
     path = Path(path)
     parser = configparser.ConfigParser(
@@ -85,11 +133,22 @@ def parse_hpgame(path: str | Path) -> GameProfile:
     if parser.has_section("settings"):
         settings.update({key: float(value) for key, value in parser["settings"].items()})
 
+    bindings = {}
+    combos = {}
+    for action, raw in parser["bindings"].items():
+        if is_sequence(raw):
+            combos[action] = parse_sequence(action, raw, bindings)
+        else:
+            bindings[action] = parse_binding(raw)
+    if parser.has_section("combos"):
+        combos.update({name: parse_combo(raw) for name, raw in parser["combos"].items()})
+
     return GameProfile(
         name=parser["game"].get("name", path.stem).strip(),
         controls=parser["game"]["controls"].strip().lower(),
         path=path,
         settings=settings,
-        bindings={action: parse_binding(raw) for action, raw in parser["bindings"].items()},
+        bindings=bindings,
         defaults=dict(parser["defaults"]) if parser.has_section("defaults") else {},
+        combos=combos,
     )

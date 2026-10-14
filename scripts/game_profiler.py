@@ -108,6 +108,7 @@ class GameProfiler:
         self.levels: dict[str, dict[str, float]] = {}
         self.timers: dict[str, threading.Timer] = {}
         self.user_keys: dict[str, str] = {}
+        self.combos_running: dict[str, threading.Event] = {}
         self.ticker: threading.Thread | None = None
         self.ticker_stop: threading.Event | None = None
         atexit.register(self.stop)
@@ -158,10 +159,15 @@ class GameProfiler:
         key = name.lower()
         if argument is not None:
             grouped = f"{key}.{str(argument).lower()}"
-            if grouped in self.profile.bindings:
+            if grouped in self.profile.bindings or grouped in self.profile.combos:
                 key = grouped
-            elif duration is None:
+            elif duration is None and DURATION.fullmatch(str(argument).strip()):
                 duration = argument
+            else:
+                return
+        if key in self.profile.combos:
+            self.run_combo(key)
+            return
         binding = self.profile.bindings.get(key)
         if binding is None:
             return
@@ -173,8 +179,38 @@ class GameProfiler:
         seconds = self.profile.settings["tap_time"] if duration is None else parse_duration(duration)
         self.hold(key, seconds)
 
+    def run_combo(self, name):
+        cancel = threading.Event()
+        with self.lock:
+            old = self.combos_running.pop(name, None)
+            if old is not None:
+                old.set()
+            self.combos_running[name] = cancel
+        threading.Thread(target=self.combo_loop, args=(name, cancel), daemon=True, name="game-combo").start()
+
+    def combo_loop(self, name, cancel):
+        for step in self.profile.combos[name]:
+            if cancel.is_set():
+                return
+            if step.wait is not None and cancel.wait(parse_duration(step.wait)):
+                return
+            for key, duration in step.actions:
+                self.action(key, None, duration)
+        with self.lock:
+            if self.combos_running.get(name) is cancel:
+                del self.combos_running[name]
+
     def release(self, name, argument=None):
         key = name.lower() if argument is None else f"{name.lower()}.{str(argument).lower()}"
+        for combo in list(self.profile.combos):
+            if combo == key or (argument is None and combo.startswith(key + ".")):
+                with self.lock:
+                    cancel = self.combos_running.pop(combo, None)
+                    if cancel is not None:
+                        cancel.set()
+                for step in self.profile.combos[combo]:
+                    for action_key, _ in step.actions:
+                        self.release(action_key)
         for bound in list(self.profile.bindings):
             if bound == key or (argument is None and bound.startswith(key + ".")):
                 with self.lock:
@@ -183,6 +219,9 @@ class GameProfiler:
 
     def release_all(self):
         with self.lock:
+            for cancel in self.combos_running.values():
+                cancel.set()
+            self.combos_running.clear()
             for timer in self.timers.values():
                 timer.cancel()
             self.timers.clear()
