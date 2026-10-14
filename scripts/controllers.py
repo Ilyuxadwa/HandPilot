@@ -172,29 +172,6 @@ class CommandController:
 
 
 class GestureController:
-    """Runs webcam capture + gesture detection on a background thread and
-    dispatches everything into a single GestureCommandController. Has no
-    OpenCV dependency at all — camera capture and frame reading live in
-    GestureDetector (open_camera/read_frame), and all preview rendering
-    lives in GestureDetector.render_preview. This controller only starts/
-    stops the loop and sends whatever GestureDetector reports:
-    - gesture_command_controller.handle_gesture(name): once per discrete
-      gesture (static poses, swipes, click_left, click_right,
-      open_palm_increase/decrease, closed_fist_increase/decrease) after it's
-      confirmed/debounced.
-    - gesture_command_controller.handle_move(x, y): every frame the hand is
-      in the "point" pointer state, with the tracked cursor position.
- 
-    Deliberately holds a reference to gesture_command_controller rather than
-    a bare (logger, callback) pair — unlike the voice pipeline's controllers,
-    which stay wiring-agnostic in main.py, this one is tied directly to its
-    command controller by design.
- 
-    show_preview: when True, shows an OpenCV window (via
-    GestureDetector.render_preview) with hand landmarks and detection state
-    overlaid. Intended for development/tuning only. Press 'q' in the preview
-    window to stop the controller."""
- 
     def __init__(self, logger, gesture_command_controller, show_preview=False):
         self.logger = logger
         self.gesture_command_controller = gesture_command_controller
@@ -239,16 +216,15 @@ class GestureController:
             if frame is None:
                 continue
  
-            gesture = self.detector.process_frame(frame)
+            events = self.detector.process_frame(frame)
  
-            if self.detector.last_cursor_position:
-                cursor_x, cursor_y = self.detector.last_cursor_position
-                self.gesture_command_controller.handle_move(cursor_x, cursor_y)
+            if self.detector.cursor_positions:
+                self.gesture_command_controller.handle_move(self.detector.cursor_positions)
  
-            if gesture:
+            for hand, gesture in events:
                 if self.logger:
-                    self.logger.info(f"Gesture recognized: {gesture}")
-                self.gesture_command_controller.handle_gesture(gesture)
+                    self.logger.info(f"Gesture recognized: {hand} {gesture}")
+                self.gesture_command_controller.handle_gesture(hand, gesture)
  
             if self.show_preview:
                 active_region = self.gesture_command_controller.get_active_region()
@@ -260,12 +236,8 @@ class GestureController:
 
 
 
+
 class GestureCommandController:
-    """Owns the active control mode (standard/gaming) and dispatches events
-    from GestureController into gesture_commands.py action functions. Mirrors
-    CommandController's role on the voice side, but does exact-name lookup
-    instead of fuzzy matching, since gesture names carry no free-text args."""
- 
     MODES = {
         "standard": gesture_commands.STANDARD_GESTURE_COMMANDS,
         "gaming": gesture_commands.GAMING_GESTURE_COMMANDS,
@@ -287,34 +259,37 @@ class GestureCommandController:
         if self.logger:
             self.logger.info(f"Gesture control mode set to: {mode}")
  
-    def handle_gesture(self, gesture_name):
+    def handle_gesture(self, hand, gesture_name):
         commands = self.MODES[self.mode]
-        action = commands.get(gesture_name)
+        action = commands.get(f"{hand}_{gesture_name}") or commands.get(gesture_name)
  
         if not action:
             if self.logger:
-                self.logger.info(f"No action bound to gesture '{gesture_name}' in mode '{self.mode}'")
+                self.logger.info(f"No action bound to gesture '{hand}_{gesture_name}' in mode '{self.mode}'")
             return
  
         if self.logger:
-            self.logger.info(f"Executing gesture action: {gesture_name} (mode={self.mode})")
+            self.logger.info(f"Executing gesture action: {hand}_{gesture_name} (mode={self.mode})")
         action()
  
-    def handle_move(self, x, y):
+    def handle_move(self, positions):
         if self.mode != "standard":
             return
-        gesture_commands.move_mouse(x, y)
+ 
+        for hand in gesture_commands.CURSOR_HAND_PRIORITY:
+            if hand in positions:
+                x, y = positions[hand]
+                gesture_commands.move_mouse(x, y)
+                return
  
     def get_active_region(self):
-        """Returns (x_min, x_max, y_min, y_max) of the camera-frame rectangle
-        that gesture_commands.move_mouse maps onto the full screen — used by
-        GestureController to draw it in the preview window."""
         return (
             gesture_commands.ACTIVE_REGION_X_MIN,
             gesture_commands.ACTIVE_REGION_X_MAX,
             gesture_commands.ACTIVE_REGION_Y_MIN,
             gesture_commands.ACTIVE_REGION_Y_MAX,
         )
+
 
 
 
