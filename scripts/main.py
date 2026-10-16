@@ -55,7 +55,7 @@ voice_controller = VoiceCommandController(logger, voice_command)
 profiler_controller = GameProfilerController()
 commands_controller = CommandController(logger, profiler_controller)
 gesture_command_controller = GestureCommandController(logger)
-gesture_controller = GestureController(logger, gesture_command_controller, show_preview=True)
+gesture_controller = GestureController(logger, gesture_command_controller, profiler_controller.gesture, show_preview=True)
 
 
 
@@ -150,4 +150,5 @@ def toggle_game_profiler(name, enabled):
         profiler_controller.add(profiler)
     else:
         profiler_controller.remove(profiler)
+    gesture_controller.set_game_mode(bool(profiler_controller.profilers))
     

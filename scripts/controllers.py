@@ -172,65 +172,74 @@ class CommandController:
 
 
 class GestureController:
-    def __init__(self, logger, gesture_command_controller, show_preview=False):
+    def __init__(self, logger, gesture_command_controller, game_callback=None, show_preview=False):
         self.logger = logger
         self.gesture_command_controller = gesture_command_controller
+        self.game_callback = game_callback
         self.show_preview = show_preview
+        self.game_mode = False
         self.running = False
         self.thread = None
         self.detector = None
- 
+
+    def set_game_mode(self, enabled):
+        self.game_mode = enabled
+        self.gesture_command_controller.set_mode("gaming" if enabled else "standard")
+
     def start(self):
         if self.running:
             return
- 
+
         self.running = True
         self.thread = threading.Thread(target=self.run, daemon=True)
         self.thread.start()
- 
+
     def stop(self):
         self.running = False
- 
+
         if self.thread:
             self.thread.join(timeout=2)
- 
+
         if self.detector:
             self.detector.close()
             self.detector = None
- 
+
     def run(self):
         self.detector = GestureDetector(logger=self.logger)
- 
+
         if not self.detector.open_camera():
             if self.logger:
                 self.logger.error("GestureController could not open webcam")
             self.running = False
             return
- 
+
         if self.logger:
             self.logger.info("GestureController started")
- 
+
         while self.running:
             frame = self.detector.read_frame()
- 
+
             if frame is None:
                 continue
- 
+
             events = self.detector.process_frame(frame)
- 
-            if self.detector.cursor_positions:
+
+            if not self.game_mode and self.detector.cursor_positions:
                 self.gesture_command_controller.handle_move(self.detector.cursor_positions)
- 
+
             for hand, gesture in events:
                 if self.logger:
                     self.logger.info(f"Gesture recognized: {hand} {gesture}")
-                self.gesture_command_controller.handle_gesture(hand, gesture)
- 
+                if self.game_mode:
+                    self.game_callback(hand, gesture)
+                else:
+                    self.gesture_command_controller.handle_gesture(hand, gesture)
+
             if self.show_preview:
                 active_region = self.gesture_command_controller.get_active_region()
                 if not self.detector.render_preview(frame, active_region):
                     self.running = False
- 
+
         self.detector.close()
         self.detector = None
 
@@ -318,3 +327,11 @@ class GameProfilerController:
     def release_all(self):
         for profiler in self.profilers:
             profiler.release_all()
+
+    def gesture(self, hand, gesture):
+        names = (f"{hand}_{gesture}", gesture)
+        for profiler in list(self.profilers):
+            for key, assigned in profiler.get_keys().items():
+                if assigned.lower() in names:
+                    name, _, argument = key.partition(".")
+                    profiler.action(name, argument or None)
